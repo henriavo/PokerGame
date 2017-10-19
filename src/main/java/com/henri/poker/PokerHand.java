@@ -19,8 +19,9 @@ public class PokerHand {
        Collections.sort(myHand.hand);
 
         assignRank(myHand);
-        if(myHand.highCardValue == -1)
-            assignHighCard(myHand);
+        assignHighCard(myHand);
+        assignHighCardRulesList(myHand);
+
         System.out.println("ok");
     }
 
@@ -31,20 +32,65 @@ public class PokerHand {
             return Result.LOSS;
         if(opponent.rank < myHand.rank)
             return Result.WIN;
-        if(opponent.rank == myHand.rank){
+        if(opponent.rank == myHand.rank) {
+            //TODO: all below cases have both hands of same rank!
 
-            //TODO: 
-            // find highest of matching cards
+            // high card
+            if (myHand.rank == 1) {
+                if(opponent.highCardValue > myHand.highCardValue)
+                    return Result.LOSS;
+                if(opponent.highCardValue < myHand.highCardValue)
+                    return Result.WIN;
+                else{
+                    return recursiveFindHighValue(myHand.highCardRules.iterator(), opponent.highCardRules.iterator());
+                }
+            }
+            // one pair
+            else if(myHand.rank == 2){
+                if(myHand.highMatchingValue > opponent.highMatchingValue)
+                    return Result.WIN;
+                else if(myHand.highMatchingValue < opponent.highMatchingValue)
+                    return Result.LOSS;
+                else  // look through high card rules stuff.
+                    return recursiveFindHighValue(myHand.highCardRules.iterator(), opponent.highCardRules.iterator());
+            }
+            // two pair
+            else if(myHand.rank == 3){
+                if(myHand.highMatchingValue > opponent.highMatchingValue)
+                    return Result.WIN;
+                else if(myHand.highMatchingValue < opponent.highMatchingValue)
+                    return Result.LOSS;
+                else if(myHand.secondHighMatchingValue > opponent.secondHighMatchingValue)
+                    return Result.WIN;
+                else if(myHand.secondHighMatchingValue < opponent.secondHighMatchingValue)
+                    return Result.LOSS;
+                else // look through high card rules stuff.
+                {
+                    return recursiveFindHighValue(myHand.highCardRules.iterator(), opponent.highCardRules.iterator());
+                }
 
-            // if equal, follow high-card rules
-            if(opponent.highCardValue > myHand.highCardValue)
-                return Result.LOSS;
-            if(opponent.highCardValue < myHand.highCardValue)
-                return Result.WIN;
+            }
             else
-                return Result.TIE;
+                return recursiveFindHighValue(myHand.highCardRules.iterator(), opponent.highCardRules.iterator());
         }
         return Result.TIE;
+    }
+
+    public Result recursiveFindHighValue(Iterator<Integer> myItr, Iterator<Integer> oppItr){
+        if(!myItr.hasNext() || !oppItr.hasNext())
+            return Result.TIE;
+
+        while(myItr.hasNext() && oppItr.hasNext()){
+            int myV = myItr.next();
+            int opV = oppItr.next();
+            if(myV > opV)
+                return Result.WIN;
+            if(myV < opV)
+                return Result.LOSS;
+            else
+                return recursiveFindHighValue(myItr, oppItr);
+        }
+        return null;
     }
 
     public void assignRank(Hand aHand){
@@ -63,7 +109,7 @@ public class PokerHand {
             rank = 7;
         if(isFourOfAKind(aHand))
             rank = 8;
-        if(isStraighFlush(aHand))
+        if(isStraightFlush(aHand))
             rank = 9;
         aHand.rank = rank;
     }
@@ -73,32 +119,28 @@ public class PokerHand {
         int maxValue = itr.next().value;
         while(itr.hasNext()){
             int newValue = itr.next().value;
-            if(newValue < maxValue)
+            if(newValue > maxValue)
                 maxValue = newValue;
         }
         aHand.highCardValue = maxValue;
     }
-    public void assignHighCardFollowHCRules(Hand aHand, int valueNotIncluded){
+
+    public void assignHighCardRulesList(Hand aHand){
         Iterator<Card> itr = aHand.hand.iterator();
-        int minValue = -1;
-
-        while(minValue == -1 && itr.hasNext()){
-            int next = itr.next().value;
-            if(next != valueNotIncluded)
-                minValue = next;
-        }
-
-        itr = aHand.hand.iterator();
-
         while(itr.hasNext()){
             int newValue = itr.next().value;
-            if(newValue < minValue && newValue != valueNotIncluded)
-                minValue = newValue;
+            if(!aHand.highCardRules.contains(newValue))
+                aHand.highCardRules.add(newValue);
         }
-        aHand.highCardValue = minValue;
+        Collections.sort(aHand.highCardRules, Collections.reverseOrder());
+        if(aHand.highCardRules.contains(aHand.highMatchingValue))
+            aHand.highCardRules.remove((Object)aHand.highMatchingValue);// makes sense for ONE PAIR. but may need to change.
+        // sorted list with no repeats of all ranks in the hand.
     }
 
-    public boolean isStraighFlush(Hand aHand){
+    // POKER HAND EVALUATIONS
+
+    public boolean isStraightFlush(Hand aHand){
         // all same suit
         Iterator<Card> itr = aHand.hand.iterator();
         int currentSuit = itr.next().suit;
@@ -175,8 +217,23 @@ public class PokerHand {
                 twoMatch = true;
         }
 
-        if(threeMatch && twoMatch)
+        boolean multipleCount = false;
+
+        ArrayList<Integer> matchValues = new ArrayList<Integer>();
+
+        for (int i = 0; i <occurrences.length ; i++) {
+            if(occurrences[i] > 2){
+                matchValues.add(i);
+                multipleCount = true;
+            }
+
+        }
+
+        if(threeMatch && twoMatch && multipleCount){
+            aHand.highMatchingValue = matchValues.iterator().next();
+            aHand.secondHighMatchingValue = matchValues.iterator().next();
             return true;
+        }
 
         // else
         return false;
@@ -261,13 +318,22 @@ public class PokerHand {
 
         int pairOccurCount = 0;
 
+        ArrayList<Integer> matchValues = new ArrayList<Integer>();
+
         for (int i = 0; i <occurrences.length ; i++) {
-            if(occurrences[i] == 2)
+            if(occurrences[i] == 2){
+                matchValues.add(i);
                 ++pairOccurCount;
+            }
+
         }
 
-        if(pairOccurCount == 2)
+        if(pairOccurCount == 2){
+            Collections.sort(matchValues);
+            aHand.highMatchingValue = matchValues.iterator().next();
+            aHand.secondHighMatchingValue = matchValues.iterator().next();
             return true;
+        }
 
         // else
         return false;
@@ -289,7 +355,7 @@ public class PokerHand {
 
         for (int i = 0; i <occurrences.length ; i++) {
             if(occurrences[i] == 2){
-                assignHighCardFollowHCRules(aHand, i);
+                aHand.highMatchingValue = i;
                 return true;
             }
         }
@@ -298,7 +364,7 @@ public class PokerHand {
         return false;
     }
 
-    // card class
+    // CARD CLASS
     public class Card  implements Comparable<Card> {
         public int value;
         public int suit;
@@ -360,7 +426,7 @@ public class PokerHand {
                     this.suit = 4;
                     break;
             }
-        } // constructor end
+        }
 
         @Override
         public int compareTo(Card o) {
@@ -370,13 +436,16 @@ public class PokerHand {
             return 1;
         return 0;
         }
-    } // Card class end
+    }
 
+    // HAND CLASS
     public class Hand {
         public ArrayList<Card> hand;
         public int rank = -1;
         public int highCardValue = -1;
-        public int matchingCardValue = -1;
+        public int highMatchingValue = -1;
+        public int secondHighMatchingValue = -1;
+        public ArrayList<Integer> highCardRules = new ArrayList<Integer>();
 
         public Hand(){
             hand = new ArrayList<Card>();

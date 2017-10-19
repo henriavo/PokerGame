@@ -49,6 +49,10 @@ public class PokerhandTest
         Test("Highest card loses",                 loss, "2S 3H 6H 7S 9C", "7H 3C TH 6H 9S");
         Test("Highest card wins",                  win,  "4S 5H 6H TS AC", "3S 5H 6H TS AC");
         Test("Equal cards is tie",                 tie,  "2S AH 4H 5S 6C", "AD 4C 5H 6H 2C");
+        Test("high card ******",                 loss,  "3S 8S 9S 5S KS", "4C 5C 9C 8C KC");
+        Test("high card ******",                 loss,  "JC 6H JS JD JH", "JC 7H JS JD JH");
+        Test("high card ******",                 loss,  "5S 5D 2C KH KH", "3C KH 5D 5S KH");
+        Test("high card ******",                 loss,  "2H 2C 3S 3H 3D", "KH KC 3S 3H 3D");
     }
 
     private void Test(String description, PokerHand.Result expected, String playerHand, String opponentHand)
